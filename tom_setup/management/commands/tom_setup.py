@@ -103,7 +103,7 @@ class Command(BaseCommand):
         else:
             
             self.context['EMAIL_HOST'] = '\'NOT SET\''
-            self.context['EMAIL_PORT'] = '\'NONE\''
+            self.context['EMAIL_PORT'] = '587'
             self.context['EMAIL_HOST_USER'] = '\'NOT SET\''
             self.context['EMAIL_HOST_PASSWORD'] = '\'NOT SET\''
             self.context['EMAIL_USE_TLS'] = 'False'
