@@ -94,10 +94,10 @@ class Command(BaseCommand):
         opt = input(prompt).upper()
         
         if opt == 'Y':
-            self.context['EMAIL_HOST'] = 'os.environ["EMAIL_HOST"]'
+            self.context['EMAIL_HOST'] = 'os.environ[\'EMAIL_HOST\']'
             self.context['EMAIL_PORT'] = '587'
-            self.context['EMAIL_HOST_USER'] = 'os.environ["EMAIL_HOST_USER"]'
-            self.context['EMAIL_HOST_PASSWORD'] = 'os.environ["EMAIL_HOST_PASSWORD"]'
+            self.context['EMAIL_HOST_USER'] = 'os.environ[\'EMAIL_HOST_USER\']'
+            self.context['EMAIL_HOST_PASSWORD'] = 'os.environ[\'EMAIL_HOST_PASSWORD\']'
             self.context['EMAIL_USE_TLS'] = 'True'
             
         else:
