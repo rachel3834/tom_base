@@ -100,6 +100,14 @@ class Command(BaseCommand):
             self.context['EMAIL_HOST_PASSWORD'] = 'os.environ[\'EMAIL_HOST_PASSWORD\']'
             self.context['EMAIL_USE_TLS'] = 'True'
             
+        else:
+            
+            self.context['EMAIL_HOST'] = '\'NOT SET\''
+            self.context['EMAIL_PORT'] = '\'NONE\''
+            self.context['EMAIL_HOST_USER'] = '\'NOT SET\''
+            self.context['EMAIL_HOST_PASSWORD'] = '\'NOT SET\''
+            self.context['EMAIL_USE_TLS'] = 'False'
+        
     def generate_secret_key(self):
         self.status('Generating secret key... ')
         self.context['SECRET_KEY'] = get_random_secret_key()
