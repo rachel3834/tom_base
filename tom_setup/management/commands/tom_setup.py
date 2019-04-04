@@ -88,6 +88,26 @@ class Command(BaseCommand):
             self.get_target_type()
         self.context['TARGET_TYPE'] = target_type
 
+    def get_email_config(self):
+
+        prompt = 'Would you like to enable email notifications from your TOM? {}'.format(self.style.WARNING('[Y/n]'))
+        opt = input(prompt).upper()
+        
+        if opt == 'Y':
+            self.context['EMAIL_HOST'] = "os.environ['EMAIL_HOST']"
+            self.context['EMAIL_PORT'] = '587'
+            self.context['EMAIL_HOST_USER'] = "os.environ['EMAIL_HOST_USER']"
+            self.context['EMAIL_HOST_PASSWORD'] = "os.environ['EMAIL_HOST_PASSWORD']"
+            self.context['EMAIL_USE_TLS'] = 'True'
+            
+        else:
+            
+            self.context['EMAIL_HOST'] = 'NOT SET'
+            self.context['EMAIL_PORT'] = 'NONE'
+            self.context['EMAIL_HOST_USER'] = 'NOT SET'
+            self.context['EMAIL_HOST_PASSWORD'] = 'NOT SET'
+            self.context['EMAIL_USE_TLS'] = 'False'
+        
     def generate_secret_key(self):
         self.status('Generating secret key... ')
         self.context['SECRET_KEY'] = get_random_secret_key()
@@ -126,6 +146,7 @@ class Command(BaseCommand):
         self.create_project_dirs()
         self.generate_secret_key()
         self.get_target_type()
+        self.get_email_config()
         self.generate_config()
         self.run_migrations()
         self.create_pi()
