@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Apr  4 10:22:46 2019
-
 @author: rstreet
 """
 
