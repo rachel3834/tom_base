@@ -1,20 +1,23 @@
 {% load bootstrap4 %}
+{% if products_page.has_other_pages %}
+  {% bootstrap_pagination products_page parameter_name="page_saved" %}
+{% endif%}
 <table class="table table-striped">
   <thead>
     <tr>
       <th>Filename</th>
-      <th>Tag</th>
+      <th>Type</th>
       <th>Created</th>
       <th>Delete</th>
     </tr>
   </thead>
   <tbody>
-    {% for product in products.saved %}
+    {% for product in products_page %}
     <tr>
       <td><a href="{{ product.data.url }}">{{ product.get_file_name }}</a></td>
       <td>
-        {% if product.tag %}
-          {{ product.get_tag_display }}
+        {% if product.data_product_type %}
+          {{ product.get_type_display }}
         {% endif %}
       </a></td>
       <td>{{ product.created }}</td>
@@ -29,3 +32,6 @@
     {% endfor %}
   </tbody>
 </table>
+{% if products_page.has_other_pages %}
+  {% bootstrap_pagination products_page parameter_name="page_saved" %}
+{% endif%}

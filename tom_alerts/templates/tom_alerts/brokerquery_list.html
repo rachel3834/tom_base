@@ -2,6 +2,7 @@
 {% load bootstrap4 %}
 {% block title %}Query List{% endblock %}
 {% block content %}
+<h3>Query a Broker</h3>
 <div class="row">
   <div class="col-md-10">
     <p>
@@ -11,13 +12,14 @@
       {% endfor %}
     </p>
     <table class="table table-striped">
-      <thead><tr><th>Name</th><th>Broker</th><th>Created</th><th>Run</th><th>Delete</th></tr></thead>
+      <thead><tr><th>Name</th><th>Broker</th><th>Created</th><th>Last Run</th><th>Run</th><th>Delete</th></tr></thead>
       <tbody>
         {% for query in filter.qs %}
         <tr>
           <td><a href="{% url 'tom_alerts:update' query.id %}" title="Update {{ query.name }}">{{ query.name }}</a></td>
           <td>{{ query.broker }}</td>
           <td>{{ query.created }}</td>
+          <td>{{ query.last_run }}</td>
           <td><a href="{% url 'tom_alerts:run' query.id %}" title="Run query" class="btn btn-primary">Run</a></td>
           <td><a href="{% url 'tom_alerts:delete' query.id %}" title="Delete query" class="btn btn-danger">Delete</a></td>
         </tr>
@@ -32,6 +34,7 @@
     </table>
   </div>
   <div class="col-md-2">
+    <h4>Filter Saved Queries</h4>
     <form action="" method="get" class="form">
       {% bootstrap_form filter.form %}
       {% buttons %}

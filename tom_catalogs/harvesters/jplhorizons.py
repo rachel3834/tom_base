@@ -4,6 +4,12 @@ from tom_catalogs.harvester import AbstractHarvester
 
 
 class JPLHorizonsHarvester(AbstractHarvester):
+    """
+    The ``JPLHorizonsHarvester`` is the interface to the JPL Horizons catalog. For information regarding the JPL
+    Horizons catalog, please see https://ssd.jpl.nasa.gov/?horizons or
+    https://astroquery.readthedocs.io/en/latest/jplhorizons/jplhorizons.html.
+    """
+
     name = 'JPL Horizons'
 
     def query(self, term, location=None, start=None, end=None, step=None):
@@ -20,7 +26,7 @@ class JPLHorizonsHarvester(AbstractHarvester):
     def to_target(self):
         target = super().to_target()
         target.type = 'NON_SIDEREAL'
-        target.identifier = str(self.catalog_data['targetname'][0])
+        target.name = str(self.catalog_data['targetname'][0])
         target.mean_anomaly = self.catalog_data['M'][0]
         target.arg_of_perihelion = self.catalog_data['w'][0]
         target.lng_asc_node = self.catalog_data['Omega'][0]

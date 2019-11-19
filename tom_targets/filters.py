@@ -1,8 +1,9 @@
-import django_filters
-from django.db.models import Q
 from django.conf import settings
+from django.db.models import ExpressionWrapper, F, FloatField, Q
+from django.db.models.functions.math import ACos, Cos, Sin
+import django_filters
 
-from tom_targets.models import Target
+from tom_targets.models import Target, TargetList
 
 
 def filter_for_field(field):
@@ -41,6 +42,9 @@ def filter_text(queryset, name, value):
 
 
 class TargetFilter(django_filters.FilterSet):
+    key = django_filters.CharFilter(field_name='targetextra__key', label='Key')
+    value = django_filters.CharFilter(field_name='targetextra__value', label='Value')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in settings.EXTRA_FIELDS:
@@ -48,14 +52,54 @@ class TargetFilter(django_filters.FilterSet):
             new_filter.parent = self
             self.filters[field['name']] = new_filter
 
-    identifier = django_filters.CharFilter(field_name='identifier', lookup_expr='icontains')
-    name = django_filters.CharFilter(field_name='name', method='filter_name')
+    name = django_filters.CharFilter(method='filter_name', label='Name')
 
     def filter_name(self, queryset, name, value):
-        return queryset.filter(
-            Q(name__icontains=value) | Q(name2__icontains=value) | Q(name3__icontains=value)
+        return queryset.filter(Q(name__icontains=value) | Q(aliases__name__icontains=value)).distinct()
+
+    cone_search = django_filters.CharFilter(method='filter_cone_search', label='Cone Search',
+                                            help_text='RA, Dec, Search Radius (degrees)')
+
+    target_cone_search = django_filters.CharFilter(method='filter_cone_search', label='Cone Search (Target)',
+                                                   help_text='Target Name, Search Radius (degrees)')
+
+    def filter_cone_search(self, queryset, name, value):
+        if name == 'cone_search':
+            ra, dec, radius = value.split(',')
+        elif name == 'target_cone_search':
+            target_name, radius = value.split(',')
+            targets = Target.objects.filter(
+                Q(name__icontains=target_name) | Q(aliases__name__icontains=target_name)
+            ).distinct()
+            if len(targets) == 1:
+                ra = targets[0].ra
+                dec = targets[0].dec
+            else:
+                return queryset.filter(name=None)
+
+        half_pi = 90
+
+        separation = ExpressionWrapper(
+            ACos(
+                (Cos(half_pi - float(dec)) * Cos(half_pi - F('dec'))) +
+                (Sin(half_pi - float(dec)) * Sin(half_pi - F('dec')) * Cos(float(ra) - F('ra')))
+            ), FloatField()
         )
+
+        return queryset.annotate(separation=separation).filter(separation__lte=radius)
+
+    def filter_target_cone_search(self, queryset, name, value):
+        return queryset
+
+    # hide target grouping list if user not logged in
+    def get_target_list_queryset(request):
+        if request.user.is_authenticated:
+            return TargetList.objects.all()
+        else:
+            return TargetList.objects.none()
+
+    targetlist__name = django_filters.ModelChoiceFilter(queryset=get_target_list_queryset, label="Target Grouping")
 
     class Meta:
         model = Target
-        fields = ['type', 'identifier', 'name']
+        fields = ['type', 'name', 'key', 'value', 'cone_search', 'targetlist__name']

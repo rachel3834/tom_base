@@ -1,11 +1,13 @@
 from django.core.management.base import BaseCommand
 import sys
 import os
+import mimetypes
 from django.conf import settings
 from django.template.loader import get_template
 from django.core.management import call_command
 from django.core.management.utils import get_random_secret_key
 from django.utils import timezone
+from django.contrib.auth.models import Group, User
 
 BASE_DIR = settings.BASE_DIR
 
@@ -31,11 +33,17 @@ class Command(BaseCommand):
             'DO NOT RUN THIS SCRIPT ON AN EXISTING TOM. It will override any custom settings you may '
             'already have.\n'
         )
-        prompt = 'Do you wish to continue? {}'.format(self.style.WARNING('[Y/n] '))
+        prompt = 'Do you wish to continue? {}'.format(self.style.WARNING('[y/N] '))
         self.stdout.write(welcome_text)
-
-        if not input(prompt).upper() == 'Y':
-            self.exit()
+        while True:
+            response = input(prompt).lower()
+            if not response or response == 'n':
+                self.stdout.write('Aborting installation.')
+                self.exit()
+            elif response == 'y':
+                break
+            else:
+                self.stdout.write('Invalid response. Please try again.')
 
     def check_python(self):
         self.status('Checking Python version... ')
@@ -47,7 +55,7 @@ class Command(BaseCommand):
             except ImportError:
                 self.exit('Could not load dataclasses. Please use Python >= 3.7 or 3.6 with dataclasses installed')
         elif major < 3 or minor < 7:
-                self.exit('Incompatible Python version found. Please install Python >= 3.7')
+            self.exit('Incompatible Python version found. Please install Python >= 3.7')
         self.ok()
 
     def create_project_dirs(self):
@@ -81,33 +89,58 @@ class Command(BaseCommand):
         self.ok()
 
     def get_target_type(self):
-        prompt = 'Which target type will your project use? {}'.format(self.style.WARNING('[SIDEREAL/NON_SIDEREAL] '))
-        target_type = input(prompt).upper()
-        if target_type not in ['SIDEREAL', 'NON_SIDEREAL']:
-            self.stdout.write('Error: invalid type {} valid types are SIDEREAL, NON_SIDEREAL'.format(target_type))
+        allowed_types = {
+            '1': 'SIDEREAL',
+            '2': 'NON_SIDEREAL'
+        }
+        options_str = ['{}) {}'.format(key, target_type) for key, target_type in allowed_types.items()]
+        prompt = 'Which target type will your project use? {} '.format(self.style.WARNING(", ".join(options_str)))
+        target_type = input(prompt)
+        try:
+            self.context['TARGET_TYPE'] = allowed_types[target_type]
+        except KeyError:
+            self.stdout.write('Error: invalid choice {}'.format(target_type))
             self.get_target_type()
-        self.context['TARGET_TYPE'] = target_type
+
+    def get_hint_preference(self):
+        help_message_info = (
+            'Help messages can be configured to appear to give suggestions on commonly customized functions. If '
+            'enabled now, they can be turned off by changing HINTS_ENABLED to False in settings.py.\n'
+        )
+        prompt = 'Would you like to enable hints? {}'.format(self.style.WARNING('[y/N] '))
+        self.stdout.write(help_message_info)
+        while True:
+            response = input(prompt).lower()
+            if not response or response == 'n':
+                self.context['HINTS_ENABLED'] = False
+            elif response == 'y':
+                self.context['HINTS_ENABLED'] = True
+            else:
+                self.stdout.write('Invalid response. Please try again.')
+                continue
+
+            break
 
     def get_email_config(self):
 
         prompt = 'Would you like to enable email notifications from your TOM? {}'.format(self.style.WARNING('[Y/n]'))
         opt = input(prompt).upper()
-        
+
         if opt == 'Y':
             self.context['EMAIL_HOST'] = 'os.environ[\'EMAIL_HOST\']'
             self.context['EMAIL_PORT'] = '587'
             self.context['EMAIL_HOST_USER'] = 'os.environ[\'EMAIL_HOST_USER\']'
             self.context['EMAIL_HOST_PASSWORD'] = 'os.environ[\'EMAIL_HOST_PASSWORD\']'
             self.context['EMAIL_USE_TLS'] = 'True'
-            
+
         else:
-            
+
             self.context['EMAIL_HOST'] = '\'NOT SET\''
             self.context['EMAIL_PORT'] = '587'
             self.context['EMAIL_HOST_USER'] = '\'NOT SET\''
             self.context['EMAIL_HOST_PASSWORD'] = '\'NOT SET\''
             self.context['EMAIL_USE_TLS'] = 'False'
-        
+
     def generate_secret_key(self):
         self.status('Generating secret key... ')
         self.context['SECRET_KEY'] = get_random_secret_key()
@@ -129,9 +162,32 @@ class Command(BaseCommand):
 
         self.ok()
 
+    def generate_urls(self):
+        self.status('Generating urls.py... ')
+        template = get_template('tom_setup/urls.tmpl')
+        rendered = template.render(self.context)
+
+        # TODO: Ugly hack to get project name
+        urls_location = os.path.join(BASE_DIR, os.path.basename(BASE_DIR), 'urls.py')
+        if not os.path.exists(urls_location):
+            msg = 'Could not determine urls.py location. Writing urls.py out to {}. Please copy file to \
+                   the proper location after script finishes.'.format(urls_location)
+            self.stdout.write(self.style.WARNING(msg))
+        with open(urls_location, 'w+') as urls_file:
+            urls_file.write(rendered)
+
+        self.ok()
+
     def create_pi(self):
         self.stdout.write('Please create a Principal Investigator (PI) for your project')
         call_command('createsuperuser')
+
+    def create_public_group(self):
+        self.status('Setting up Public group... ')
+        group = Group.objects.create(name='Public')
+        group.user_set.add(*User.objects.all())
+        group.save()
+        self.ok()
 
     def complete(self):
         self.exit(
@@ -146,8 +202,10 @@ class Command(BaseCommand):
         self.create_project_dirs()
         self.generate_secret_key()
         self.get_target_type()
-        self.get_email_config()
+        self.get_hint_preference()
         self.generate_config()
+        self.generate_urls()
         self.run_migrations()
         self.create_pi()
+        self.create_public_group()
         self.complete()

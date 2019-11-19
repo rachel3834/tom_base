@@ -16,7 +16,7 @@ def get_lasair_object(objectId):
     url = LASAIR_URL + '/object/' + objectId + '/json/'
     response = requests.get(url)
     obj = response.json()
-    jdmax = obj['candidates'][0]['jd']
+    jdmax = obj['candidates'][0]['mjd']
     ra = obj['objectData']['ramean']
     dec = obj['objectData']['decmean']
     glon = obj['objectData']['glonmean']
@@ -34,6 +34,11 @@ def get_lasair_object(objectId):
 
 
 class LasairBroker(GenericBroker):
+    """
+    The ``LasairBroker`` is the interface to the Lasair alert broker. For information regarding the query format for
+    Lasair, please see https://lasair.roe.ac.uk/objlist/.
+    """
+
     name = 'Lasair'
     form = LasairBrokerForm
 
@@ -47,7 +52,7 @@ class LasairBroker(GenericBroker):
             alerts = []
             for objectId in cone_result['hitlist']:
                 alerts.append(get_lasair_object(objectId))
-            return alerts
+            return iter(alerts)
 
         # note: the sql SELECT must include objectId
         if 'sqlquery' in parameters and len(parameters['sqlquery'].strip()) > 0:
@@ -59,7 +64,7 @@ class LasairBroker(GenericBroker):
             alerts = []
             for record in records:
                 alerts.append(get_lasair_object(record['objectId']))
-            return alerts
+            return iter(alerts)
 
     def fetch_alert(self, alert_id):
         url = LASAIR_URL + '/object/' + alert_id + '/json/'
@@ -87,8 +92,7 @@ class LasairBroker(GenericBroker):
         for c in alert['candidates']:
             if 'candid' in c:
                 break
-        return Target(
-            identifier=c['candid'],
+        return Target.objects.create(
             name=c['candid'],
             type='SIDEREAL',
             ra=c['ra'],

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django_extensions',
+    'guardian',
     'tom_common',
     'django_comments',
     'bootstrap4',
@@ -122,6 +123,10 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend',
+)
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
@@ -136,7 +141,7 @@ USE_L10N = False
 
 USE_TZ = True
 
-DATETIME_FORMAT = 'Y-m-d H:m:s'
+DATETIME_FORMAT = 'Y-m-d H:i:s'
 DATE_FORMAT = 'Y-m-d'
 
 
@@ -179,8 +184,27 @@ FACILITIES = {
     'LCO': {
         'portal_url': 'https://observe.lco.global',
         'api_key': os.getenv('LCO_API_KEY', ''),
-    }
+    },
 }
+
+# Define the valid data product types for your TOM. Be careful when removing items, as previously valid types will no
+# longer be valid, and may cause issues unless the offending records are modified.
+DATA_PRODUCT_TYPES = {
+    'photometry': ('photometry', 'Photometry'),
+    'fits_file': ('fits_file', 'FITS File'),
+    'spectroscopy': ('spectroscopy', 'Spectroscopy'),
+    'image_file': ('image_file', 'Image File')
+}
+
+DATA_PROCESSORS = {
+    'photometry': 'tom_dataproducts.processors.photometry_processor.PhotometryProcessor',
+    'spectroscopy': 'tom_dataproducts.processors.spectroscopy_processor.SpectroscopyProcessor',
+}
+
+TOM_FACILITY_CLASSES = [
+    'tom_observations.facilities.lco.LCOFacility',
+    'tom_observations.facilities.gemini.GEMFacility'
+]
 
 # Define extra target fields here. Types can be any of "number", "string", "boolean" or "datetime"
 # See https://tomtoolkit.github.io/docs/target_fields for documentation on this feature
@@ -193,6 +217,9 @@ FACILITIES = {
 # ]
 EXTRA_FIELDS = []
 
+# Define custom DataProcessor class
+# DATA_PROCESSOR_CLASS = 'mytom.custom_data_processor.CustomDataProcessor'
+
 # Authentication strategy can either be LOCKED (required login for all views)
 # or READ_ONLY (read only access to views)
 AUTH_STRATEGY = 'READ_ONLY'
@@ -203,15 +230,20 @@ OPEN_URLS = []
 
 HOOKS = {
     'target_post_save': 'tom_common.hooks.target_post_save',
-    'observation_change_state': 'tom_common.hooks.observation_change_state'
+    'observation_change_state': 'tom_common.hooks.observation_change_state',
+    'data_product_post_upload': 'tom_dataproducts.hooks.data_product_post_upload'
 }
 
-DATA_TYPES = (
-    ('SPECTROSCOPY', 'Spectroscopy'),
-    ('PHOTOMETRY', 'Photometry')
-)
+AUTO_THUMBNAILS = False
+
+THUMBNAIL_MAX_SIZE = (0, 0)
+
+THUMBNAIL_DEFAULT_SIZE = (200, 200)
+
+HINTS_ENABLED = False
+HINT_LEVEL = 20
 
 try:
-    from local_settings import * # noqa
+    from local_settings import *  # noqa
 except ImportError:
     pass
